@@ -36,3 +36,9 @@ Chaque requête admin utilise `Authorization: Bearer <ADMIN_TOKEN>`. Les emails 
 ## Notes de conformité
 
 Respectez les lois applicables (CAN-SPAM, CASL, UK PECR, RGPD/ePrivacy et règles nationales), la base légale et les exigences de preuve/identification de l'expéditeur. Vérifiez l'adresse physique réelle, la légitimité de chaque contact et les règles locales avant tout envoi. Le fait qu'une adresse soit publique dans OSM n'autorise pas automatiquement le démarchage. Les horaires de démonstration sont explicitement fictifs/à confirmer; relisez et corrigez toute démo avant de la présenter comme contenu final. Les pages GitHub Pages sont publiquement accessibles malgré leur chemin aléatoire: ce n'est pas un contrôle d'accès ni un secret durable.
+
+## Dépannage Render
+
+Si les logs s'arrêtent sur `Configuration manquante : ADMIN_TOKEN`, le processus refuse volontairement de démarrer sans secret admin. Dans Render → **Environment**, ajoute au minimum `ADMIN_TOKEN` (32+ caractères aléatoires), `DATABASE_URL`, `PUBLIC_BASE_URL` (URL HTTPS réelle du service) et `UNSUBSCRIBE_SECRET` (32+ caractères), puis redéploie. Vérifie aussi que `DATABASE_SSL=true` et que le schéma Supabase a été exécuté. Pour appeler `/admin/process` même en DRY_RUN, renseigne aussi Groq et GitHub. Pour les envois réels, remplis toutes les variables Brevo/QStash indiquées dans `.env.example`.
+
+Le fichier `render.yaml` donne la configuration de référence (`npm ci`, `npm start`, health check `/health`). Pour un service Render déjà créé, applique manuellement ces commandes dans **Settings**; le fichier Blueprint seul ne remplace pas les variables d'environnement du service existant. Évite de mélanger Yarn et npm : ce dépôt versionne `package-lock.json`, donc utilise `npm ci`.

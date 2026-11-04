@@ -1,0 +1,67 @@
+# Render Blueprint reference. When creating a Blueprint, Render will prompt for sync:false values.
+# For an existing Web Service, apply the same build/start/environment values in its Dashboard.
+services:
+  - type: web
+    name: auto-client
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DRY_RUN
+        value: "true"
+      - key: DATABASE_SSL
+        value: "true"
+      - key: MAX_EMAILS_PER_DAY
+        value: "40"
+      - key: MIN_DELAY_SECONDS
+        value: "180"
+      - key: MAX_DELAY_SECONDS
+        value: "2400"
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
+      - key: GITHUB_REPO
+        value: emstronglezin-cmd/auto-client
+      - key: GITHUB_BRANCH
+        value: main
+      - key: GITHUB_PAGES_BASE_URL
+        value: https://emstronglezin-cmd.github.io/auto-client
+      - key: OVERPASS_URL
+        value: https://overpass-api.de/api/interpreter
+      - key: NOMINATIM_URL
+        value: https://nominatim.openstreetmap.org/search
+      - key: ADMIN_TOKEN
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: UNSUBSCRIBE_SECRET
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: SENDER_EMAIL
+        sync: false
+      - key: SENDER_NAME
+        sync: false
+      - key: SENDER_POSTAL_ADDRESS
+        sync: false
+      - key: REPLY_TO_EMAIL
+        sync: false
+      - key: OWNER_EMAIL
+        sync: false
+      - key: BREVO_WEBHOOK_TOKEN
+        sync: false
+      - key: QSTASH_TOKEN
+        sync: false
+      - key: QSTASH_CURRENT_SIGNING_KEY
+        sync: false
+      - key: QSTASH_NEXT_SIGNING_KEY
+        sync: false
