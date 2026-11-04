@@ -1,10 +1,6 @@
 import 'dotenv/config';
 
 const bool = (value, fallback) => value == null ? fallback : value.toLowerCase() === 'true';
-const requiredWhenLive = (key, value) => {
-  if (!value) throw new Error(`Configuration manquante : ${key}`);
-  return value;
-};
 
 export const config = {
   port: Number(process.env.PORT || 3000),
@@ -38,15 +34,26 @@ export const config = {
   nominatimUrl: process.env.NOMINATIM_URL || 'https://nominatim.openstreetmap.org/search',
 };
 
+const BASE_ENV = ['ADMIN_TOKEN', 'DATABASE_URL', 'PUBLIC_BASE_URL', 'UNSUBSCRIBE_SECRET'];
+const LIVE_ENV = [
+  'GROQ_API_KEY', 'GITHUB_TOKEN', 'GITHUB_REPO', 'GITHUB_PAGES_BASE_URL',
+  'BREVO_API_KEY', 'SENDER_EMAIL', 'SENDER_POSTAL_ADDRESS', 'REPLY_TO_EMAIL',
+  'OWNER_EMAIL', 'QSTASH_TOKEN', 'QSTASH_CURRENT_SIGNING_KEY',
+  'QSTASH_NEXT_SIGNING_KEY', 'BREVO_WEBHOOK_TOKEN',
+];
+
+export function missingConfig(keys = [...BASE_ENV, ...(!config.dryRun ? LIVE_ENV : [])]) {
+  const missing = keys.filter(key => !String(process.env[key] || '').trim());
+  if (keys.includes('ADMIN_TOKEN') && config.adminToken && config.adminToken.length < 24) missing.push('ADMIN_TOKEN (minimum 24 caractères)');
+  if (keys.includes('UNSUBSCRIBE_SECRET') && config.unsubscribeSecret && config.unsubscribeSecret.length < 32) missing.push('UNSUBSCRIBE_SECRET (minimum 32 caractères)');
+  if (keys.includes('PUBLIC_BASE_URL') && config.publicBaseUrl && !config.publicBaseUrl.startsWith('https://')) missing.push('PUBLIC_BASE_URL (doit être HTTPS)');
+  if (keys.includes('MAX_EMAILS_PER_DAY') && !Number.isFinite(config.maxEmailsPerDay)) missing.push('MAX_EMAILS_PER_DAY (entier positif)');
+  if (config.minDelaySeconds > config.maxDelaySeconds) missing.push('MIN_DELAY_SECONDS/MAX_DELAY_SECONDS (plage invalide)');
+  return [...new Set(missing)];
+}
+
+// Startup is intentionally tolerant: Render can deploy a healthy, degraded service
+// before secrets are entered. Sensitive/admin operations enforce their own requirements.
 export function validateConfig() {
-  const basics = ['ADMIN_TOKEN', 'DATABASE_URL', 'PUBLIC_BASE_URL', 'UNSUBSCRIBE_SECRET'];
-  for (const key of basics) requiredWhenLive(key, process.env[key]);
-  if (config.adminToken.length < 24) throw new Error('ADMIN_TOKEN doit contenir au moins 24 caractères.');
-  if (config.unsubscribeSecret.length < 32) throw new Error('UNSUBSCRIBE_SECRET doit contenir au moins 32 caractères.');
-  if (config.maxEmailsPerDay < 1 || !Number.isFinite(config.maxEmailsPerDay)) throw new Error('MAX_EMAILS_PER_DAY doit être un entier positif.');
-  if (config.minDelaySeconds > config.maxDelaySeconds) throw new Error('MIN_DELAY_SECONDS doit être inférieur ou égal à MAX_DELAY_SECONDS.');
-  if (!config.publicBaseUrl.startsWith('https://')) throw new Error('PUBLIC_BASE_URL doit commencer par https://');
-  if (!config.dryRun) {
-    for (const key of ['GROQ_API_KEY', 'GITHUB_TOKEN', 'GITHUB_REPO', 'GITHUB_PAGES_BASE_URL', 'BREVO_API_KEY', 'SENDER_EMAIL', 'SENDER_POSTAL_ADDRESS', 'REPLY_TO_EMAIL', 'OWNER_EMAIL', 'QSTASH_TOKEN', 'QSTASH_CURRENT_SIGNING_KEY', 'QSTASH_NEXT_SIGNING_KEY', 'BREVO_WEBHOOK_TOKEN']) requiredWhenLive(key, process.env[key]);
-  }
+  return missingConfig();
 }

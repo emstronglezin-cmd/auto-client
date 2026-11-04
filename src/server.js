@@ -1,18 +1,20 @@
 import express from 'express';
 import crypto from 'node:crypto';
-import { config, validateConfig } from './config.js';
+import { config, missingConfig, validateConfig } from './config.js';
 import { pool, query, transaction } from './db.js';
 import { CATEGORIES, brevoSend, demoHtml, generateDemoCopy, generateEmail, makeUnsubscribeToken, publishDemo, verifyUnsubscribeToken } from './services.js';
 import { publishJob, verifyQstash } from './qstash.js';
 
-validateConfig();
+const startupMissing = validateConfig();
 const app = express();
 app.disable('x-powered-by');
 app.use(express.json({ limit: '256kb', verify: (req, _res, buf) => { req.rawBody = buf.toString('utf8'); } }));
 
 function admin(req, res, next) {
+  if (!config.adminToken) return res.status(503).json({ error: 'Service en mode dégradé', missing: ['ADMIN_TOKEN'] });
   const token = req.get('authorization')?.replace(/^Bearer\s+/i, '');
   if (!token || !safeEqual(token, config.adminToken)) return res.status(401).json({ error: 'Unauthorized' });
+  if (!config.databaseUrl) return res.status(503).json({ error: 'Service en mode dégradé', missing: ['DATABASE_URL'] });
   next();
 }
 function safeEqual(a, b) {
@@ -239,8 +241,14 @@ app.get('/health', async (req,res) => {
     try { return res.json({ok:true,digest:await dailyDigest()}); }
     catch { return res.status(500).json({ok:false,error:'Digest failed'}); }
   }
-  try { await query('select 1'); return res.json({ok:true,service:'lead-studio',database:'ok',dryRun:config.dryRun}); }
-  catch { return res.status(503).json({ok:false,service:'lead-studio',database:'unavailable'}); }
+  const missing = validateConfig();
+  if (!config.databaseUrl) return res.status(200).json({ok:true,status:'degraded',service:'lead-studio',database:'not_configured',dryRun:config.dryRun,missing});
+  try {
+    await query('select 1');
+    return res.status(200).json({ok:true,status:missing.length?'degraded':'ready',service:'lead-studio',database:'ok',dryRun:config.dryRun,missing});
+  } catch {
+    return res.status(503).json({ok:false,status:'database_unavailable',service:'lead-studio',database:'unavailable',dryRun:config.dryRun});
+  }
 });
 app.post('/health',async(req,res)=>{
   if(req.query.task!=='digest' || !(await verifyQstash(req))) return res.status(401).json({error:'Invalid QStash task/signature'});
@@ -262,6 +270,11 @@ app.post('/admin/hunt',admin,async (req,res) => {
 });
 
 app.post('/admin/process',admin,async (_req,res) => {
+  const needed = config.dryRun
+    ? ['PUBLIC_BASE_URL','UNSUBSCRIBE_SECRET','GROQ_API_KEY','GITHUB_TOKEN','GITHUB_REPO','GITHUB_PAGES_BASE_URL']
+    : undefined;
+  const missing = needed ? missingConfig(needed) : validateConfig();
+  if (missing.length) return res.status(503).json({error:'Configuration incomplète pour le traitement',missing});
   try {
     const rows = await query(`select l.* from leads l where l.email is not null and l.status in ('nouveau','démo prête') and l.unsubscribed_at is null and not exists (select 1 from emails e where e.lead_id=l.id and e.sequence=0 and e.status <> 'dry_run') and not exists (select 1 from blocklist b where b.email=lower(l.email)) order by l.created_at asc limit 100`);
     const results=[];
@@ -273,9 +286,13 @@ app.post('/admin/process',admin,async (_req,res) => {
     res.json({processed:results.length,results,dryRun:config.dryRun});
   } catch { res.status(500).json({error:'Processing failed'}); }
 });
-app.post('/admin/digest',admin,async (_req,res) => { try { res.json(await dailyDigest()); } catch { res.status(500).json({error:'Digest failed'}); } });
+app.post('/admin/digest',admin,async (_req,res) => {
+  if (!config.dryRun) { const missing=validateConfig(); if (missing.length) return res.status(503).json({error:'Configuration incomplète pour l’envoi du digest',missing}); }
+  try { res.json(await dailyDigest()); } catch { res.status(500).json({error:'Digest failed'}); }
+});
 
 app.get('/unsubscribe/:token',async (req,res) => {
+  if (!config.unsubscribeSecret) return res.status(503).type('text').send('Unsubscribe is not configured yet.');
   const leadId = verifyUnsubscribeToken(req.params.token);
   if (!leadId) return res.status(400).type('text').send('Invalid unsubscribe link.');
   try {
@@ -292,6 +309,7 @@ app.get('/unsubscribe/:token',async (req,res) => {
 });
 
 app.post('/webhooks/brevo',async (req,res) => {
+  if (!config.brevoWebhookToken) return res.status(503).json({error:'Webhook not configured'});
   if (!webhookKey(req)) return res.status(401).json({error:'Unauthorized webhook'});
   const body=req.body||{}; const event=String(body.event||body.type||'').toLowerCase();
   const email=String(body.email||body.contact?.email||'').toLowerCase();
@@ -333,6 +351,7 @@ app.post('/webhooks/brevo',async (req,res) => {
 });
 
 app.post('/webhooks/inbound',async (req,res) => {
+  if (!config.brevoWebhookToken) return res.status(503).json({error:'Webhook not configured'});
   if (!webhookKey(req)) return res.status(401).json({error:'Unauthorized webhook'});
   const email=String(req.body?.from||req.body?.email||req.body?.sender||'').toLowerCase();
   if (!validEmail(email)) return res.status(400).json({error:'Valid from/email required'});
@@ -358,6 +377,6 @@ app.post('/jobs/followup',qstashAuth(),async(req,res)=>{
 });
 
 app.use((err,_req,res,_next)=>{ console.error('request_error',err.message); res.status(400).json({error:'Invalid request'}); });
-const server=app.listen(config.port,'0.0.0.0',()=>console.log(`lead-studio listening on ${config.port}; dryRun=${config.dryRun}`));
+const server=app.listen(config.port,'0.0.0.0',()=>console.log(`lead-studio listening on ${config.port}; dryRun=${config.dryRun}; status=${startupMissing.length?'degraded':'ready'}; missing=${startupMissing.join(',')||'none'}`));
 process.on('SIGTERM',()=>server.close(async()=>{await pool.end();process.exit(0);}));
 process.on('SIGINT',()=>server.close(async()=>{await pool.end();process.exit(0);}));

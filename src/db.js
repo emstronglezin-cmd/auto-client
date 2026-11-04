@@ -3,7 +3,7 @@ import { config } from './config.js';
 const { Pool } = pg;
 
 export const pool = new Pool({
-  connectionString: config.databaseUrl,
+  ...(config.databaseUrl ? { connectionString: config.databaseUrl } : {}),
   ssl: config.databaseSsl ? { rejectUnauthorized: false } : false,
   max: 5,
   idleTimeoutMillis: 30000,
