@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101927">
+  <meta name="description" content="Console privée de pilotage AutoClient">
+  <title>AutoClient — Console</title>
+  <style>
+    :root{--ink:#172333;--muted:#718096;--line:#e8edf2;--paper:#f5f7fa;--white:#fff;--navy:#101927;--teal:#15b8a6;--teal-dark:#078c83;--lime:#d9f99d;--amber:#d98e16;--red:#c94b53;--shadow:0 16px 42px rgba(23,35,51,.07)}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}button,input,select{font:inherit}button{cursor:pointer}a{color:inherit}
+    .shell{min-height:100vh;display:grid;grid-template-columns:250px minmax(0,1fr)}.sidebar{background:var(--navy);color:#dbe4ef;padding:26px 18px;display:flex;flex-direction:column;gap:28px}.brand{display:flex;align-items:center;gap:12px;padding:0 10px}.brand-mark{width:38px;height:38px;display:grid;place-items:center;border-radius:13px;background:linear-gradient(145deg,#39d5c0,#0a8f8c);color:#082a32;font-weight:900;font-size:19px}.brand-name{font-weight:750;letter-spacing:.2px;color:#fff}.brand-caption{font-size:11px;color:#91a0b5;margin-top:1px}.nav-label{font-size:10px;text-transform:uppercase;letter-spacing:1.6px;color:#8491a4;padding:0 12px;margin-bottom:8px}.nav a{display:flex;align-items:center;gap:12px;padding:11px 12px;color:#bec9d7;text-decoration:none;border-radius:11px;font-size:13px;margin:3px 0}.nav a:hover,.nav a.active{background:#202d3d;color:#fff}.nav-icon{width:19px;text-align:center;font-size:15px}.sidebar-note{margin-top:auto;background:#192638;border:1px solid #2b3b4f;border-radius:15px;padding:15px;font-size:12px;color:#b8c5d4}.sidebar-note strong{display:block;color:#fff;margin-bottom:6px}.main{min-width:0;padding:32px clamp(18px,4vw,54px) 50px;max-width:1600px;width:100%;margin:0 auto}.topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:27px}.eyebrow{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--teal-dark);font-weight:800}.title{font-size:clamp(26px,3vw,36px);line-height:1.15;letter-spacing:-1.1px;margin:5px 0 0}.top-actions{display:flex;align-items:center;gap:10px}.health-pill{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);padding:9px 13px;border-radius:999px;font-size:12px;color:#526073}.dot{width:8px;height:8px;background:#e1a326;border-radius:50%;box-shadow:0 0 0 3px #fff4db}.dot.ok{background:#20a987;box-shadow:0 0 0 3px #e4f8f2}.dot.bad{background:#d5575e;box-shadow:0 0 0 3px #fdebed}.icon-button{border:1px solid var(--line);background:#fff;color:#465367;border-radius:11px;padding:9px 12px}.notice{display:none;margin:0 0 20px;padding:13px 16px;background:#fff6df;border:1px solid #f4dc9a;color:#6d5113;border-radius:12px;font-size:13px}.notice.show{display:block}.connection{background:linear-gradient(115deg,#fff 0%,#f1fbf9 100%);border:1px solid #dceeea;border-radius:17px;padding:18px 20px;display:grid;grid-template-columns:minmax(180px,1.1fr) minmax(170px,.9fr) minmax(190px,1fr) auto;align-items:end;gap:13px;box-shadow:var(--shadow);margin-bottom:22px}.connection-head{align-self:center}.connection-head b{display:block;font-size:14px}.connection-head small{display:block;color:var(--muted);font-size:11px;margin-top:4px}.field label{display:block;font-size:11px;color:#6a7788;font-weight:700;margin:0 0 6px}.field input,.field select{width:100%;min-width:0;border:1px solid #dce3e9;background:#fff;border-radius:10px;padding:10px 12px;color:var(--ink);outline:none}.field input:focus,.field select:focus{border-color:#46bfae;box-shadow:0 0 0 3px #dff7f2}.btn{border:0;border-radius:10px;padding:10px 15px;font-weight:750;font-size:12px;transition:transform .12s,opacity .12s}.btn:hover{transform:translateY(-1px)}.btn:disabled{opacity:.52;cursor:wait;transform:none}.btn-primary{background:var(--teal);color:#073436}.btn-dark{background:var(--navy);color:#fff}.btn-light{background:#fff;border:1px solid var(--line);color:#445166}.btn-danger{background:#fff1f1;color:#a64049;border:1px solid #f3d6d8}.btn-small{padding:7px 10px;font-size:11px}.stats{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:13px;margin:0 0 23px}.stat{background:#fff;border:1px solid var(--line);border-radius:15px;padding:17px 17px 15px;min-width:0;box-shadow:0 6px 22px rgba(20,34,53,.025)}.stat-label{font-size:11px;color:#768396;font-weight:650}.stat-number{font-size:27px;font-weight:800;letter-spacing:-.9px;margin-top:8px}.stat-foot{font-size:10px;color:#9aa5b2;margin-top:1px}.actions-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:17px;margin-bottom:23px}.panel{background:#fff;border:1px solid var(--line);border-radius:17px;padding:20px;box-shadow:0 6px 22px rgba(20,34,53,.025);min-width:0}.panel-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:17px}.panel-heading h2{font-size:16px;letter-spacing:-.3px;margin:0}.panel-heading p{font-size:11px;color:var(--muted);margin:4px 0 0}.panel-tag{font-size:10px;background:#e7f8f5;color:#087b73;padding:6px 9px;border-radius:999px;font-weight:750;white-space:nowrap}.form-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}.form-grid .field input,.form-grid .field select{font-size:13px}.panel-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:16px}.hint{font-size:11px;color:#8390a0;margin-top:13px}.process-box{background:#f5f9fc;border:1px solid #e6edf3;border-radius:13px;padding:14px;margin-bottom:13px}.process-box b{font-size:13px}.process-box p{font-size:11px;color:#758295;margin:5px 0 0}.action-buttons{display:flex;gap:9px;flex-wrap:wrap}.result{display:none;margin-top:13px;padding:12px;border-radius:11px;background:#f2f7fa;font-size:12px;white-space:pre-wrap;word-break:break-word;max-height:175px;overflow:auto}.result.show{display:block}.toolbar{display:flex;align-items:center;justify-content:space-between;gap:13px;margin:0 0 13px}.toolbar-title h2{font-size:17px;margin:0}.toolbar-title p{margin:4px 0 0;color:var(--muted);font-size:11px}.filter{width:auto;min-width:170px;border:1px solid var(--line);background:#fff;padding:9px 11px;border-radius:10px;color:#425065;font-size:12px}.table-wrap{overflow:auto;background:#fff;border:1px solid var(--line);border-radius:15px;box-shadow:0 6px 22px rgba(20,34,53,.025)}table{border-collapse:collapse;width:100%;min-width:850px}th{background:#fafbfd;color:#7a8797;text-transform:uppercase;letter-spacing:.7px;font-size:9px;text-align:left;padding:12px 14px;border-bottom:1px solid var(--line)}td{padding:13px 14px;border-bottom:1px solid #f0f3f6;font-size:12px;vertical-align:middle}tr:last-child td{border-bottom:0}.lead-name{font-weight:750;color:#243348}.sub{display:block;font-size:10px;color:#8995a4;margin-top:3px}.status{display:inline-flex;padding:5px 8px;border-radius:999px;font-size:10px;background:#eef2f6;color:#566478;white-space:nowrap}.status.contact-manuel,.status.répondu{background:#e7f8f5;color:#11776c}.status.désinscrit,.status.rebondi,.status.erreur{background:#fff0f0;color:#a5444e}.status.contacté,.status.email-en-file,.status.démo-prête{background:#eaf1ff;color:#405eae}.demo-link{font-weight:700;color:#087f78;text-decoration:none}.demo-link:hover{text-decoration:underline}.empty{padding:28px;text-align:center;color:#8b97a5;font-size:12px}.pagination{display:flex;align-items:center;justify-content:flex-end;gap:9px;padding:12px 2px;color:#7c8998;font-size:11px}.footer{padding:22px 0 0;color:#98a3af;font-size:10px;text-align:center}.toast{position:fixed;right:20px;bottom:20px;max-width:min(420px,calc(100vw - 40px));background:#172333;color:#fff;border-radius:12px;padding:13px 16px;font-size:12px;box-shadow:0 15px 40px rgba(0,0,0,.18);opacity:0;transform:translateY(10px);pointer-events:none;transition:.2s;z-index:10}.toast.show{opacity:1;transform:translateY(0)}.toast.error{background:#9d3943}
+    @media(max-width:1100px){.shell{grid-template-columns:205px minmax(0,1fr)}.stats{grid-template-columns:repeat(3,1fr)}.connection{grid-template-columns:1fr 1fr}.connection-head{grid-column:1/-1}.actions-grid{grid-template-columns:1fr 1fr}}
+    @media(max-width:760px){.shell{display:block}.sidebar{padding:13px 15px;display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:10px}.brand{padding:0}.nav{display:flex;gap:3px}.nav-group-label,.nav a span:not(.nav-icon),.sidebar-note{display:none}.nav a{padding:9px;border-radius:9px;margin:0}.main{padding:21px 15px 35px}.topbar{align-items:flex-start}.top-actions{flex-direction:column-reverse;align-items:flex-end}.health-pill{white-space:nowrap}.connection{grid-template-columns:1fr 1fr;padding:15px}.connection-head{grid-column:1/-1}.connection .btn{width:100%}.stats{grid-template-columns:repeat(2,1fr);gap:9px}.stat{padding:13px}.stat-number{font-size:24px}.actions-grid{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr 1fr}.form-grid .field:first-child{grid-column:1/-1}.toolbar{align-items:flex-end}.filter{max-width:48%}}
+    @media(max-width:430px){.topbar{display:block}.top-actions{flex-direction:row;align-items:center;justify-content:space-between;margin-top:13px}.connection{grid-template-columns:1fr}.connection-head{grid-column:auto}.form-grid{grid-template-columns:1fr}.form-grid .field:first-child{grid-column:auto}.panel{padding:16px}.toolbar{display:block}.filter{max-width:none;width:100%;margin-top:11px}}
+  </style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-mark">A</div><div><div class="brand-name">AutoClient</div><div class="brand-caption">Lead studio · Console</div></div></div>
+    <nav class="nav" aria-label="Navigation">
+      <div class="nav-label nav-group-label">Espace de travail</div>
+      <a class="active" href="#overview"><span class="nav-icon">▦</span><span>Vue d’ensemble</span></a>
+      <a href="#prospects"><span class="nav-icon">◎</span><span>Prospects</span></a>
+      <a href="#actions"><span class="nav-icon">✦</span><span>Actions</span></a>
+    </nav>
+    <div class="sidebar-note"><strong>Mode sécurisé</strong>Le token admin reste uniquement dans la mémoire de cette page et disparaît à l’actualisation.</div>
+  </aside>
+  <main class="main" id="overview">
+    <div class="topbar">
+      <div><div class="eyebrow">Ton espace de prospection</div><h1 class="title">Centre de pilotage</h1></div>
+      <div class="top-actions"><div class="health-pill"><span id="healthDot" class="dot"></span><span id="healthText">Vérification du serveur…</span></div><button id="refreshBtn" class="icon-button" type="button" title="Actualiser">↻ Actualiser</button></div>
+    </div>
+    <div id="notice" class="notice" role="status"></div>
+    <section class="connection" aria-label="Connexion API">
+      <div class="connection-head"><b>Connexion au backend</b><small>Token demandé en mémoire, jamais sauvegardé.</small></div>
+      <div class="field"><label for="apiUrl">URL du backend</label><input id="apiUrl" type="url" value="https://local-lead-studio.onrender.com" autocomplete="url"></div>
+      <div class="field"><label for="adminToken">Token admin</label><input id="adminToken" type="password" placeholder="Colle ADMIN_TOKEN ici" autocomplete="off" spellcheck="false"></div>
+      <button id="connectBtn" class="btn btn-primary" type="button">Connecter</button>
+    </section>
+    <section class="stats" aria-label="Statistiques">
+      <article class="stat"><div class="stat-label">Prospects trouvés</div><div id="sLeads" class="stat-number">—</div><div class="stat-foot">Total enregistrés</div></article>
+      <article class="stat"><div class="stat-label">À contacter manuellement</div><div id="sManual" class="stat-number">—</div><div class="stat-foot">Sans email OSM</div></article>
+      <article class="stat"><div class="stat-label">Démos publiées</div><div id="sDemos" class="stat-number">—</div><div class="stat-foot">GitHub Pages</div></article>
+      <article class="stat"><div class="stat-label">Emails envoyés</div><div id="sSent" class="stat-number">—</div><div class="stat-foot">Envois Brevo</div></article>
+      <article class="stat"><div class="stat-label">Clics</div><div id="sClicks" class="stat-number">—</div><div class="stat-foot">Sur les démos</div></article>
+      <article class="stat"><div class="stat-label">Réponses</div><div id="sReplies" class="stat-number">—</div><div class="stat-foot">Via événement entrant</div></article>
+    </section>
+    <section class="actions-grid" id="actions">
+      <article class="panel">
+        <div class="panel-heading"><div><h2>Recherche de prospects</h2><p>Commerces OSM sans tag website dans la ville choisie.</p></div><span class="panel-tag">AGENT 1 · HUNT</span></div>
+        <form id="huntForm">
+          <div class="form-grid">
+            <div class="field"><label for="country">Pays</label><input id="country" name="country" placeholder="United States" required maxlength="100"></div>
+            <div class="field"><label for="city">Ville</label><input id="city" name="city" placeholder="Austin" required maxlength="100"></div>
+            <div class="field"><label for="category">Catégorie</label><select id="category" name="category"><option value="restaurant">Restaurant</option><option value="salon">Salon</option><option value="clinique">Clinique</option><option value="artisan">Artisan</option></select></div>
+          </div>
+          <div class="panel-actions"><button id="huntBtn" class="btn btn-dark" type="submit">⌕ Rechercher</button><span class="hint">Les résultats sans email apparaissent en « contact manuel ».</span></div>
+        </form>
+        <div id="huntResult" class="result" aria-live="polite"></div>
+      </article>
+      <article class="panel">
+        <div class="panel-heading"><div><h2>Traitement & alertes</h2><p>Prépare les démos et les brouillons de contact.</p></div><span class="panel-tag">AGENTS 2–4</span></div>
+        <div class="process-box"><b>Mode simulation</b><p>DRY_RUN=true bloque les emails. La génération IA et la publication des démos nécessitent Groq et GitHub configurés.</p></div>
+        <div class="action-buttons"><button id="processBtn" class="btn btn-primary" type="button">✦ Traiter les prospects</button><button id="digestBtn" class="btn btn-light" type="button">Envoyer le digest</button></div>
+        <div id="actionResult" class="result" aria-live="polite"></div>
+      </article>
+    </section>
+    <section id="prospects">
+      <div class="toolbar"><div class="toolbar-title"><h2>Prospects récents</h2><p id="leadCount">Connecte-toi pour charger ta liste.</p></div><select id="statusFilter" class="filter" aria-label="Filtrer par statut"><option value="">Tous les statuts</option><option>nouveau</option><option>contact manuel</option><option>démo prête</option><option>email en file</option><option>contacté</option><option>répondu</option><option>désinscrit</option><option>rebondi</option><option>erreur</option></select></div>
+      <div class="table-wrap"><table><thead><tr><th>Commerce</th><th>Lieu</th><th>Catégorie</th><th>Contact</th><th>Statut</th><th>Email</th><th>Démo</th></tr></thead><tbody id="leadRows"><tr><td colspan="7" class="empty">Connecte-toi au backend pour afficher les prospects.</td></tr></tbody></table></div>
+      <div class="pagination"><button id="prevBtn" class="btn btn-light btn-small" type="button" disabled>← Précédent</button><span id="pageLabel">Page 1</span><button id="nextBtn" class="btn btn-light btn-small" type="button" disabled>Suivant →</button></div>
+    </section>
+    <div class="footer">AutoClient · Les actions admin exigent un token valide · N’active les emails qu’après vérification de la conformité et de l’expéditeur.</div>
+  </main>
+</div>
+<div id="toast" class="toast" role="status"></div>
+<script>
+(() => {
+  const DEFAULT_API='https://local-lead-studio.onrender.com';
+  let token='', offset=0, total=0, busy=false, toastTimer;
+  const pageSize=30;
+  const $=id=>document.getElementById(id);
+  const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const base=()=>($('apiUrl').value.trim()||DEFAULT_API).replace(/\/+$/,'');
+  function toast(message,error=false){const el=$('toast');el.textContent=message;el.className='toast show'+(error?' error':'');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.className='toast',4500)}
+  function showNotice(message){const el=$('notice');el.textContent=message;el.classList.toggle('show',Boolean(message))}
+  function setBusy(button,on,label){if(!button.dataset.original)button.dataset.original=button.textContent;button.disabled=on;button.textContent=on?label:button.dataset.original}
+  async function request(path,{method='GET',body}={}){
+    const headers={}; if(token)headers.Authorization='Bearer '+token; if(body!==undefined)headers['Content-Type']='application/json';
+    let response;
+    try{response=await fetch(base()+path,{method,headers,body:body===undefined?undefined:JSON.stringify(body),mode:'cors',credentials:'omit',cache:'no-store'})}
+    catch(e){throw new Error('Backend inaccessible. Vérifie son URL, Render et le réglage CORS FRONTEND_ORIGIN.')}
+    let data={};try{data=await response.json()}catch{data={}}
+    if(!response.ok)throw new Error(data.error||`Erreur HTTP ${response.status}`+(data.missing?.length?': '+data.missing.join(', '):''));
+    return data;
+  }
+  function setHealth(data){const dot=$('healthDot'),txt=$('healthText');dot.className='dot '+(data.status==='ready'?'ok':data.status==='degraded'?'':'bad');if(data.status==='ready')txt.textContent='Backend prêt';else if(data.status==='degraded'){txt.textContent='Backend en mode dégradé';showNotice('Backend démarré, mais il manque : '+(data.missing||[]).join(', ')+'. Les routes admin resteront indisponibles jusqu’à configuration.')}else txt.textContent=data.database==='ok'?'Backend en ligne':'Backend indisponible';}
+  async function health(){try{const d=await request('/health');setHealth(d);return d}catch(e){$('healthDot').className='dot bad';$('healthText').textContent='Backend inaccessible';showNotice(e.message);return null}}
+  async function refreshStats(){const d=await request('/stats');$('sLeads').textContent=d.leads??0;$('sManual').textContent=d.manual_contacts??0;$('sDemos').textContent=d.demos??0;$('sSent').textContent=d.emails_sent??0;$('sClicks').textContent=d.clicks??0;$('sReplies').textContent=d.replies??0;return d}
+  function statusClass(status){return String(status||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/gi,'-').toLowerCase()}
+  async function loadLeads(){if(!token)return;const filter=$('statusFilter').value;const q=new URLSearchParams({limit:String(pageSize),offset:String(offset)});if(filter)q.set('status',filter);const d=await request('/admin/leads?'+q.toString());total=d.total||0;$('leadCount').textContent=`${total} prospect${total===1?'':'s'}${filter?' · filtre : '+filter:''}`;$('pageLabel').textContent=`Page ${Math.floor(offset/pageSize)+1} · ${total} au total`;$('prevBtn').disabled=offset===0;$('nextBtn').disabled=offset+pageSize>=total;
+    const tbody=$('leadRows');if(!d.leads?.length){tbody.innerHTML='<tr><td colspan="7" class="empty">Aucun prospect pour ce filtre.</td></tr>';return}
+    tbody.innerHTML=d.leads.map(l=>{const loc=[l.city,l.country].filter(Boolean).join(', ');const contact=[l.phone,l.address].filter(Boolean).join(' · ');const demo=l.demo_url&&/^https:\/\//i.test(l.demo_url)?`<a class="demo-link" href="${escapeHtml(l.demo_url)}" target="_blank" rel="noopener noreferrer">Ouvrir ↗</a>`:'—';return `<tr><td><span class="lead-name">${escapeHtml(l.name)}</span><span class="sub">${escapeHtml(l.id)}</span></td><td>${escapeHtml(loc||'—')}</td><td>${escapeHtml(l.category||'—')}</td><td>${escapeHtml(contact||'—')}</td><td><span class="status ${statusClass(l.status)}">${escapeHtml(l.status||'—')}</span></td><td>${l.email?`<a href="mailto:${escapeHtml(l.email)}">${escapeHtml(l.email)}</a>`:'<span class="sub">Non répertorié</span>'}</td><td>${demo}</td></tr>`}).join('');
+  }
+  async function connect(){const candidate=$('adminToken').value.trim();if(!candidate){toast('Colle ton ADMIN_TOKEN pour connecter la console.',true);return}token=candidate;$('adminToken').value='';try{await refreshStats();offset=0;await loadLeads();await health();showNotice('');toast('Console connectée. Le token reste uniquement en mémoire jusqu’à la fermeture ou l’actualisation.')}catch(e){token='';toast(e.message,true)}}
+  function disconnect(){token='';$('adminToken').value='';$('sLeads').textContent='—';$('sManual').textContent='—';$('sDemos').textContent='—';$('sSent').textContent='—';$('sClicks').textContent='—';$('sReplies').textContent='—';$('leadCount').textContent='Connecte-toi pour charger ta liste.';$('leadRows').innerHTML='<tr><td colspan="7" class="empty">Session déconnectée.</td></tr>';toast('Token effacé de la mémoire de la page.')}
+  $('apiUrl').value=DEFAULT_API;
+  $('connectBtn').addEventListener('click',connect);
+  $('refreshBtn').addEventListener('click',async()=>{await health();if(token)try{await refreshStats();await loadLeads();toast('Données actualisées.')}catch(e){toast(e.message,true)}});
+  $('huntForm').addEventListener('submit',async e=>{e.preventDefault();if(!token)return toast('Connecte-toi d’abord.',true);const b=$('huntBtn');setBusy(b,true,'Recherche…');try{const d=await request('/admin/hunt',{method:'POST',body:{country:$('country').value.trim(),city:$('city').value.trim(),category:$('category').value}});const text=`Trouvés : ${d.found} · À contacter manuellement : ${d.manual} · Doublons ignorés : ${d.duplicates}`;$('huntResult').textContent=text;$('huntResult').classList.add('show');toast('Recherche terminée.');await refreshStats();offset=0;await loadLeads()}catch(err){$('huntResult').textContent=err.message;$('huntResult').classList.add('show');toast(err.message,true)}finally{setBusy(b,false)}});
+  $('processBtn').addEventListener('click',async()=>{if(!token)return toast('Connecte-toi d’abord.',true);if(!confirm('Préparer les démos et traiter les prospects éligibles ? En DRY_RUN aucun email prospect ne sera envoyé; les démos peuvent être publiées publiquement.'))return;const b=$('processBtn');setBusy(b,true,'Traitement…');try{const d=await request('/admin/process',{method:'POST',body:{}});const result=(d.results||[]).map(x=>`${x.result||'traité'}${x.demoUrl?' — '+x.demoUrl:''}`).join('\n');$('actionResult').textContent=`Traités : ${d.processed} · DRY_RUN : ${d.dryRun}\n${result||'Aucun prospect éligible.'}`;$('actionResult').classList.add('show');await refreshStats();await loadLeads();toast('Traitement terminé.')}catch(e){$('actionResult').textContent=e.message;$('actionResult').classList.add('show');toast(e.message,true)}finally{setBusy(b,false)}});
+  $('digestBtn').addEventListener('click',async()=>{if(!token)return toast('Connecte-toi d’abord.',true);if(!confirm('Générer le digest quotidien ? Si DRY_RUN=false, il sera envoyé à OWNER_EMAIL.'))return;const b=$('digestBtn');setBusy(b,true,'Préparation…');try{const d=await request('/admin/digest',{method:'POST',body:{}});$('actionResult').textContent=`Digest traité. Prospects : ${d.found??0} · Emails : ${d.sent??0} · Clics : ${d.clicks??0} · Contacts manuels : ${d.manual??0}`;$('actionResult').classList.add('show');toast('Digest terminé.')}catch(e){$('actionResult').textContent=e.message;$('actionResult').classList.add('show');toast(e.message,true)}finally{setBusy(b,false)}});
+  $('statusFilter').addEventListener('change',async()=>{offset=0;if(token)try{await loadLeads()}catch(e){toast(e.message,true)}});
+  $('prevBtn').addEventListener('click',async()=>{offset=Math.max(0,offset-pageSize);try{await loadLeads()}catch(e){toast(e.message,true)}});
+  $('nextBtn').addEventListener('click',async()=>{if(offset+pageSize<total)offset+=pageSize;try{await loadLeads()}catch(e){toast(e.message,true)}});
+  health();
+})();
+</script>
+</body>
+</html>

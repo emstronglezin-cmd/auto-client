@@ -23,6 +23,7 @@ export const config = {
   replyToEmail: process.env.REPLY_TO_EMAIL || '',
   ownerEmail: process.env.OWNER_EMAIL || '',
   publicBaseUrl: (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, ''),
+  frontendOrigin: (process.env.FRONTEND_ORIGIN || 'https://emstronglezin-cmd.github.io').replace(/\/$/, ''),
   qstashToken: process.env.QSTASH_TOKEN || '',
   qstashCurrentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY || '',
   qstashNextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY || '',

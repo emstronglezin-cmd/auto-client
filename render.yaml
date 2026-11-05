@@ -29,6 +29,8 @@ services:
         value: main
       - key: GITHUB_PAGES_BASE_URL
         value: https://emstronglezin-cmd.github.io/auto-client
+      - key: FRONTEND_ORIGIN
+        value: https://emstronglezin-cmd.github.io
       - key: OVERPASS_URL
         value: https://overpass-api.de/api/interpreter
       - key: NOMINATIM_URL

@@ -14,10 +14,15 @@ API Express autonome pour trouver des commerces dans OpenStreetMap, préparer un
 
 > N'ajoutez aucune clé dans le dépôt. Les variables Render sont le `.env` de production; `.env.example` ne contient que des valeurs fictives. Pour tester en local, copiez `.env.example` en `.env`, remplissez les champs et lancez `npm install && npm start`.
 
+## Interface de pilotage
+
+Le fichier `index.html` est le dashboard statique, servi par GitHub Pages à `https://emstronglezin-cmd.github.io/auto-client/`. Il appelle le backend défini dans l’interface et propose santé, stats, recherche, traitement, digest et liste paginée des leads. L’utilisateur saisit `ADMIN_TOKEN` en session; le navigateur ne le sauvegarde pas. L’API n’autorise que l’origine `FRONTEND_ORIGIN` (par défaut `https://emstronglezin-cmd.github.io`).
+
 ## API
 
 - `GET /health` : état service/DB, pas de secret exposé.
 - `GET /stats` : stats simples, token admin requis.
+- `GET /admin/leads?limit=30&offset=0&status=nouveau` : liste paginée protégée des prospects (email, téléphone, statut et lien de démo).
 - `POST /admin/hunt` : `{ "country":"United States", "city":"Austin", "category":"restaurant" }`. Catégories: `salon`, `clinique`, `restaurant`, `artisan`. Overpass ne retourne que les objets nommés sans tag `website`; l'email n'est pris que depuis `contact:email` ou `email`. Sans email, statut **contact manuel**.
 - `POST /admin/process` : prépare/publie les démos puis met en file les prospects éligibles. En simulation, les messages sont enregistrés `dry_run`, sans appel d'envoi Brevo ni planification de relance.
 - `POST /admin/digest` : envoie le digest au propriétaire (sans envoi en DRY_RUN).

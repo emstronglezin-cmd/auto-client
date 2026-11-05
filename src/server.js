@@ -9,6 +9,21 @@ const startupMissing = validateConfig();
 const app = express();
 app.disable('x-powered-by');
 app.use(express.json({ limit: '256kb', verify: (req, _res, buf) => { req.rawBody = buf.toString('utf8'); } }));
+app.use((req,res,next)=>{
+  const origin=req.get('origin');
+  if(origin && origin===config.frontendOrigin){
+    res.set('Access-Control-Allow-Origin',origin);
+    res.set('Vary','Origin');
+    res.set('Access-Control-Allow-Headers','Authorization, Content-Type');
+    res.set('Access-Control-Allow-Methods','GET, POST, OPTIONS');
+    res.set('Access-Control-Max-Age','600');
+  }
+  if(req.method==='OPTIONS'){
+    if(origin && origin!==config.frontendOrigin) return res.sendStatus(403);
+    return res.sendStatus(204);
+  }
+  next();
+});
 
 function admin(req, res, next) {
   if (!config.adminToken) return res.status(503).json({ error: 'Service en mode dégradé', missing: ['ADMIN_TOKEN'] });
@@ -255,6 +270,23 @@ app.post('/health',async(req,res)=>{
   try { res.json({ok:true,digest:await dailyDigest()}); }
   catch { res.status(500).json({ok:false,error:'Digest failed'}); }
 });
+app.get('/admin/leads',admin,async (req,res) => {
+  const allowed=['nouveau','contact manuel','démo prête','email en file','contacté','répondu','désinscrit','rebondi','erreur'];
+  const limit=Math.min(100,Math.max(1,Number.parseInt(req.query.limit,10)||30));
+  const offset=Math.max(0,Number.parseInt(req.query.offset,10)||0);
+  const status=typeof req.query.status==='string' ? req.query.status : '';
+  if(status && !allowed.includes(status)) return res.status(400).json({error:'Invalid status filter'});
+  try {
+    const params=[]; const where=status ? 'where l.status=$1' : '';
+    if(status) params.push(status);
+    const total=await query(`select count(*)::int as total from leads l ${where}`,params);
+    const result=await query(`select l.id,l.name,l.country,l.city,l.category,l.address,l.phone,l.email,l.status,l.created_at,d.demo_url,
+      (select e.status from emails e where e.lead_id=l.id order by e.sequence desc limit 1) as last_email_status
+      from leads l left join demos d on d.lead_id=l.id ${where} order by l.created_at desc limit $${params.length+1} offset $${params.length+2}`,[...params,limit,offset]);
+    res.json({leads:result.rows,total:total.rows[0].total,limit,offset});
+  } catch { res.status(500).json({error:'Leads unavailable'}); }
+});
+
 app.get('/stats',admin,async (_req,res) => {
   try {
     const out = await query(`select (select count(*)::int from leads) as leads,(select count(*)::int from leads where status='contact manuel') as manual_contacts,(select count(*)::int from demos) as demos,(select count(*)::int from emails where status in ('sent','delivered','opened','clicked')) as emails_sent,(select count(*)::int from events where event_type='email_clicked') as clicks,(select count(*)::int from leads where response_at is not null) as replies,(select count(*)::int from blocklist) as unsubscribed`);
