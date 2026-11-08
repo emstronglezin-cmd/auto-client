@@ -20,7 +20,7 @@ Le fichier `index.html` est le dashboard statique, servi par GitHub Pages à `ht
 
 ## API
 
-- `GET /health` : état service/DB, pas de secret exposé.
+- `GET /health` : état service/DB/schéma; renvoie `TABLE:leads` etc. si les tables SQL ne sont pas encore créées, sans exposer les secrets.
 - `GET /stats` : stats simples, token admin requis.
 - `GET /admin/leads?limit=30&offset=0&status=nouveau` : liste paginée protégée des prospects (email, téléphone, statut et lien de démo).
 - `POST /admin/hunt` : `{ "country":"United States", "city":"Austin", "category":"restaurant" }`. Catégories: `salon`, `clinique`, `restaurant`, `artisan`. Overpass ne retourne que les objets nommés sans tag `website`; l'email n'est pris que depuis `contact:email` ou `email`. Sans email, statut **contact manuel**.

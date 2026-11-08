@@ -93,7 +93,7 @@
     try{response=await fetch(base()+path,{method,headers,body:body===undefined?undefined:JSON.stringify(body),mode:'cors',credentials:'omit',cache:'no-store'})}
     catch(e){throw new Error('Backend inaccessible. Vérifie son URL, Render et le réglage CORS FRONTEND_ORIGIN.')}
     let data={};try{data=await response.json()}catch{data={}}
-    if(!response.ok)throw new Error(data.error||`Erreur HTTP ${response.status}`+(data.missing?.length?': '+data.missing.join(', '):''));
+    if(!response.ok){const parts=[data.error||`Erreur HTTP ${response.status}`,data.detail,data.missing?.length?'Variables manquantes : '+data.missing.join(', '):''].filter(Boolean);throw new Error(parts.join(' — '))}
     return data;
   }
   function setHealth(data){const dot=$('healthDot'),txt=$('healthText');dot.className='dot '+(data.status==='ready'?'ok':data.status==='degraded'?'':'bad');if(data.status==='ready')txt.textContent='Backend prêt';else if(data.status==='degraded'){txt.textContent='Backend en mode dégradé';showNotice('Backend démarré, mais il manque : '+(data.missing||[]).join(', ')+'. Les routes admin resteront indisponibles jusqu’à configuration.')}else txt.textContent=data.database==='ok'?'Backend en ligne':'Backend indisponible';}

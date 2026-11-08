@@ -68,22 +68,30 @@ function addressFromTags(t = {}) {
   return [street, t['addr:suburb'], t['addr:city'], t['addr:postcode']].filter(Boolean).join(', ') || null;
 }
 async function hunt({ country, city, category }) {
-  const bbox = await locateCity(city, country);
-  const response = await fetch(config.overpassUrl, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: new URLSearchParams({ data: overpassQuery(bbox,category) }) });
-  if (!response.ok) throw new Error(`Overpass error ${response.status}`);
-  const data = await response.json();
-  let created = 0, manual = 0, skipped = 0;
-  for (const el of (data.elements || [])) {
-    const tags = el.tags || {};
-    const rawEmail = tags['contact:email'] || tags.email || null;
-    const email = rawEmail && validEmail(rawEmail.trim()) ? rawEmail.trim().toLowerCase() : null;
-    const result = await query(`insert into leads (osm_type,osm_id,country,city,category,name,address,phone,email,status)
-      values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) on conflict (osm_type,osm_id) do nothing returning id`,
-      [el.type, String(el.id), country.trim(), city.trim(), category, String(tags.name).trim(), addressFromTags(tags), tags['contact:phone'] || tags.phone || null, email, email ? 'nouveau' : 'contact manuel']);
-    if (result.rowCount) { created++; if (!email) manual++; await query('insert into events (lead_id,event_type,source,payload) values ($1,$2,$3,$4)', [result.rows[0].id,'lead_found','overpass',JSON.stringify({has_email:Boolean(email),category,city,country})]); }
-    else skipped++;
+  let stage='Nominatim';
+  try {
+    const bbox = await locateCity(city, country);
+    stage='Overpass';
+    const response = await fetch(config.overpassUrl, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: new URLSearchParams({ data: overpassQuery(bbox,category) }) });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    stage='Supabase';
+    let created = 0, manual = 0, skipped = 0;
+    for (const el of (data.elements || [])) {
+      const tags = el.tags || {};
+      const rawEmail = tags['contact:email'] || tags.email || null;
+      const email = rawEmail && validEmail(rawEmail.trim()) ? rawEmail.trim().toLowerCase() : null;
+      const result = await query(`insert into leads (osm_type,osm_id,country,city,category,name,address,phone,email,status)
+        values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) on conflict do nothing returning id`,
+        [el.type, String(el.id), country.trim(), city.trim(), category, String(tags.name).trim(), addressFromTags(tags), tags['contact:phone'] || tags.phone || null, email, email ? 'nouveau' : 'contact manuel']);
+      if (result.rowCount) { created++; if (!email) manual++; await query('insert into events (lead_id,event_type,source,payload) values ($1,$2,$3,$4)', [result.rows[0].id,'lead_found','overpass',JSON.stringify({has_email:Boolean(email),category,city,country})]); }
+      else skipped++;
+    }
+    return { found: created, manual, duplicates: skipped };
+  } catch (error) {
+    error.stage ||= stage;
+    throw error;
   }
-  return { found: created, manual, duplicates: skipped };
 }
 
 async function ensureDemo(lead) {
@@ -260,7 +268,10 @@ app.get('/health', async (req,res) => {
   if (!config.databaseUrl) return res.status(200).json({ok:true,status:'degraded',service:'lead-studio',database:'not_configured',dryRun:config.dryRun,missing});
   try {
     await query('select 1');
-    return res.status(200).json({ok:true,status:missing.length?'degraded':'ready',service:'lead-studio',database:'ok',dryRun:config.dryRun,missing});
+    const tables=await query(`select to_regclass('public.leads') as leads,to_regclass('public.demos') as demos,to_regclass('public.emails') as emails,to_regclass('public.events') as events,to_regclass('public.blocklist') as blocklist`);
+    const missingTables=Object.entries(tables.rows[0]).filter(([,value])=>!value).map(([name])=>name);
+    const allMissing=[...missing,...missingTables.map(name=>`TABLE:${name}`)];
+    return res.status(200).json({ok:true,status:allMissing.length?'degraded':'ready',service:'lead-studio',database:'ok',schema:missingTables.length?'incomplete':'ok',dryRun:config.dryRun,missing:allMissing});
   } catch {
     return res.status(503).json({ok:false,status:'database_unavailable',service:'lead-studio',database:'unavailable',dryRun:config.dryRun});
   }
@@ -298,7 +309,11 @@ app.post('/admin/hunt',admin,async (req,res) => {
   const {country,city,category}=req.body||{};
   if (!validText(country,100)||!validText(city,100)||!Object.hasOwn(CATEGORIES,category)) return res.status(400).json({error:'country, city, category requis; catégories: salon, clinique, restaurant, artisan'});
   try { res.json(await hunt({country,city,category})); }
-  catch (err) { console.error('hunt_failed',err.message); res.status(502).json({error:'Échec de la recherche (Nominatim/Overpass). Réessayez plus tard.'}); }
+  catch (err) {
+    const detail=String(err.message||'Erreur inconnue').slice(0,180);
+    console.error('hunt_failed',err.stage||'unknown',err.code||'',detail);
+    res.status(502).json({error:`Échec à l’étape ${err.stage||'recherche'}.`,detail});
+  }
 });
 
 app.post('/admin/process',admin,async (_req,res) => {
