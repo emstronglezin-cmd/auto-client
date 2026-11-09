@@ -49,14 +49,27 @@
     </section>
     <section class="actions-grid" id="actions">
       <article class="panel">
-        <div class="panel-heading"><div><h2>Recherche de prospects</h2><p>Commerces OSM sans tag website dans la ville choisie.</p></div><span class="panel-tag">AGENT 1 · HUNT</span></div>
+        <div class="panel-heading"><div><h2>Recherche de prospects</h2><p>Choisis un pays; laisse la ville vide pour élargir la recherche au pays entier.</p></div><span class="panel-tag">AGENT 1 · HUNT</span></div>
         <form id="huntForm">
           <div class="form-grid">
-            <div class="field"><label for="country">Pays</label><input id="country" name="country" placeholder="United States" required maxlength="100"></div>
-            <div class="field"><label for="city">Ville</label><input id="city" name="city" placeholder="Austin" required maxlength="100"></div>
-            <div class="field"><label for="category">Catégorie</label><select id="category" name="category"><option value="restaurant">Restaurant</option><option value="salon">Salon</option><option value="clinique">Clinique</option><option value="artisan">Artisan</option></select></div>
+            <div class="field"><label for="country">Pays</label><select id="country" name="country" required>
+              <option>United States</option><option>United Kingdom</option><option>Canada</option><option>Ireland</option>
+              <option>France</option><option>Germany</option><option>Netherlands</option><option>Belgium</option><option>Luxembourg</option>
+              <option>Switzerland</option><option>Austria</option><option>Spain</option><option>Portugal</option><option>Italy</option>
+              <option>Sweden</option><option>Norway</option><option>Denmark</option><option>Finland</option><option>Poland</option>
+              <option>Czechia</option><option>Greece</option><option>Romania</option><option>Australia</option><option>New Zealand</option>
+              <option>South Africa</option><option>United Arab Emirates</option><option>Burkina Faso</option><option>Ghana</option>
+            </select></div>
+            <div class="field"><label for="city">Ville <span style="font-weight:400;color:#98a3af">(facultatif)</span></label><input id="city" name="city" placeholder="Laisser vide = pays entier" maxlength="100"></div>
+            <div class="field"><label for="category">Secteur d’activité</label><select id="category" name="category">
+              <option value="restaurant">Restaurant</option><option value="cafe">Café</option><option value="boulangerie">Boulangerie</option><option value="fleuriste">Fleuriste</option>
+              <option value="salon">Salon de coiffure / beauté</option><option value="spa">Spa / bien-être</option><option value="clinique">Clinique / médecins</option><option value="dentiste">Dentiste</option><option value="veterinaire">Vétérinaire</option><option value="garderie">Garderie</option>
+              <option value="artisan">Artisans (général)</option><option value="plombier">Plombier</option><option value="electricien">Électricien</option><option value="serrurier">Serrurier</option><option value="garage">Garage / réparation auto</option><option value="nettoyage">Entreprise de nettoyage</option>
+              <option value="fitness">Salle de sport</option><option value="hotel">Hôtel / maison d’hôtes</option><option value="avocat">Avocat</option><option value="comptable">Comptable</option><option value="immobilier">Agence immobilière</option><option value="assurance">Assurance</option><option value="architecte">Architecte</option>
+              <option value="photographe">Photographe</option><option value="opticien">Opticien</option><option value="boutique">Boutique de vêtements</option><option value="bijouterie">Bijouterie</option><option value="toilettage">Toilettage animalier</option><option value="agence_voyage">Agence de voyages</option><option value="blanchisserie">Blanchisserie</option>
+            </select></div>
           </div>
-          <div class="panel-actions"><button id="huntBtn" class="btn btn-dark" type="submit">⌕ Rechercher</button><span class="hint">Les résultats sans email apparaissent en « contact manuel ».</span></div>
+          <div class="panel-actions"><button id="huntBtn" class="btn btn-dark" type="submit">⌕ Rechercher</button><span class="hint">Sans ville, recherche au niveau du pays (jusqu’à 1 500 objets par requête). Les emails restent limités aux données OSM.</span></div>
         </form>
         <div id="huntResult" class="result" aria-live="polite"></div>
       </article>
@@ -109,7 +122,7 @@
   $('apiUrl').value=DEFAULT_API;
   $('connectBtn').addEventListener('click',connect);
   $('refreshBtn').addEventListener('click',async()=>{await health();if(token)try{await refreshStats();await loadLeads();toast('Données actualisées.')}catch(e){toast(e.message,true)}});
-  $('huntForm').addEventListener('submit',async e=>{e.preventDefault();if(!token)return toast('Connecte-toi d’abord.',true);const b=$('huntBtn');setBusy(b,true,'Recherche…');try{const d=await request('/admin/hunt',{method:'POST',body:{country:$('country').value.trim(),city:$('city').value.trim(),category:$('category').value}});const text=`Trouvés : ${d.found} · À contacter manuellement : ${d.manual} · Doublons ignorés : ${d.duplicates}`;$('huntResult').textContent=text;$('huntResult').classList.add('show');toast('Recherche terminée.');await refreshStats();offset=0;await loadLeads()}catch(err){$('huntResult').textContent=err.message;$('huntResult').classList.add('show');toast(err.message,true)}finally{setBusy(b,false)}});
+  $('huntForm').addEventListener('submit',async e=>{e.preventDefault();if(!token)return toast('Connecte-toi d’abord.',true);const b=$('huntBtn');setBusy(b,true,'Recherche…');try{const d=await request('/admin/hunt',{method:'POST',body:{country:$('country').value.trim(),city:$('city').value.trim(),category:$('category').value}});const text=`Portée : ${d.scope==='country'?'pays entier':'ville'} · Scannés : ${d.scanned??'—'}${d.limited?' (limite de 1 500 atteinte)':''}\nNouveaux : ${d.found} · À contacter manuellement : ${d.manual} · Doublons ignorés : ${d.duplicates}`;$('huntResult').textContent=text;$('huntResult').classList.add('show');toast('Recherche terminée.');await refreshStats();offset=0;await loadLeads()}catch(err){$('huntResult').textContent=err.message;$('huntResult').classList.add('show');toast(err.message,true)}finally{setBusy(b,false)}});
   $('processBtn').addEventListener('click',async()=>{if(!token)return toast('Connecte-toi d’abord.',true);if(!confirm('Préparer les démos et traiter les prospects éligibles ? En DRY_RUN aucun email prospect ne sera envoyé; les démos peuvent être publiées publiquement.'))return;const b=$('processBtn');setBusy(b,true,'Traitement…');try{const d=await request('/admin/process',{method:'POST',body:{}});const result=(d.results||[]).map(x=>`${x.result||'traité'}${x.demoUrl?' — '+x.demoUrl:''}`).join('\n');$('actionResult').textContent=`Traités : ${d.processed} · DRY_RUN : ${d.dryRun}\n${result||'Aucun prospect éligible.'}`;$('actionResult').classList.add('show');await refreshStats();await loadLeads();toast('Traitement terminé.')}catch(e){$('actionResult').textContent=e.message;$('actionResult').classList.add('show');toast(e.message,true)}finally{setBusy(b,false)}});
   $('digestBtn').addEventListener('click',async()=>{if(!token)return toast('Connecte-toi d’abord.',true);if(!confirm('Générer le digest quotidien ? Si DRY_RUN=false, il sera envoyé à OWNER_EMAIL.'))return;const b=$('digestBtn');setBusy(b,true,'Préparation…');try{const d=await request('/admin/digest',{method:'POST',body:{}});$('actionResult').textContent=`Digest traité. Prospects : ${d.found??0} · Emails : ${d.sent??0} · Clics : ${d.clicks??0} · Contacts manuels : ${d.manual??0}`;$('actionResult').classList.add('show');toast('Digest terminé.')}catch(e){$('actionResult').textContent=e.message;$('actionResult').classList.add('show');toast(e.message,true)}finally{setBusy(b,false)}});
   $('statusFilter').addEventListener('change',async()=>{offset=0;if(token)try{await loadLeads()}catch(e){toast(e.message,true)}});

@@ -45,23 +45,31 @@ function webhookKey(req) {
   return Boolean(config.brevoWebhookToken && typeof provided === 'string' && safeEqual(provided, config.brevoWebhookToken));
 }
 
-async function locateCity(city, country) {
+async function locateSearchArea(city, country) {
   const url = new URL(config.nominatimUrl);
-  url.searchParams.set('city', city); url.searchParams.set('country', country); url.searchParams.set('format','jsonv2'); url.searchParams.set('limit','1');
+  if (city) url.searchParams.set('city', city);
+  url.searchParams.set('country', country);
+  url.searchParams.set('format','jsonv2');
+  url.searchParams.set('limit','1');
+  if (!city) url.searchParams.set('featuretype','country');
   const response = await fetch(url, { headers: { 'User-Agent': 'WebStudioLeadFinder/1.0 (contact configured by operator)' } });
-  if (!response.ok) throw new Error(`Nominatim error ${response.status}`);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const results = await response.json();
-  if (!results[0]?.boundingbox) throw new Error('Ville introuvable dans Nominatim.');
-  return results[0].boundingbox.map(Number); // south, north, west, east
+  const place = results[0];
+  if (!place?.boundingbox) throw new Error(city ? 'Ville introuvable pour ce pays.' : 'Pays introuvable dans Nominatim.');
+  if (!city && place.osm_type === 'relation' && /^\d+$/.test(String(place.osm_id))) {
+    return { areaId: String(BigInt(place.osm_id) + 3600000000n), bbox: place.boundingbox.map(Number) };
+  }
+  return { areaId: null, bbox: place.boundingbox.map(Number) };
 }
-function overpassQuery(bbox, category) {
-  const [south,north,west,east] = bbox;
+function overpassQuery(location, category) {
+  const [south,north,west,east] = location.bbox;
   const box = `${south},${west},${north},${east}`;
+  const area = location.areaId ? `(area:${location.areaId})` : `(${box})`;
   const items = CATEGORIES[category].clauses.map(([key,value]) =>
-    `node["${key}"${value === '*' ? '' : `="${value}"` }]["name"][!"website"](${box});way["${key}"${value === '*' ? '' : `="${value}"` }]["name"][!"website"](${box});relation["${key}"${value === '*' ? '' : `="${value}"` }]["name"][!"website"](${box});`
+    `node["${key}"${value === '*' ? '' : `="${value}"` }]["name"][!"website"]${area};way["${key}"${value === '*' ? '' : `="${value}"` }]["name"][!"website"]${area};relation["${key}"${value === '*' ? '' : `="${value}"` }]["name"][!"website"]${area};`
   ).join('\n');
-  // Wildcard craft is represented by key existence (not a literal wildcard tag).
-  return `[out:json][timeout:35];(${items});out center tags;`;
+  return `[out:json][timeout:60][maxsize:268435456];(${items});out center tags 1500;`;
 }
 function addressFromTags(t = {}) {
   const street = [t['addr:street'], t['addr:housenumber']].filter(Boolean).join(' ');
@@ -70,24 +78,26 @@ function addressFromTags(t = {}) {
 async function hunt({ country, city, category }) {
   let stage='Nominatim';
   try {
-    const bbox = await locateCity(city, country);
+    const location = await locateSearchArea(city, country);
     stage='Overpass';
-    const response = await fetch(config.overpassUrl, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: new URLSearchParams({ data: overpassQuery(bbox,category) }) });
+    const response = await fetch(config.overpassUrl, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: new URLSearchParams({ data: overpassQuery(location,category) }) });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
     stage='Supabase';
     let created = 0, manual = 0, skipped = 0;
-    for (const el of (data.elements || [])) {
+    const elements=data.elements || [];
+    for (const el of elements) {
       const tags = el.tags || {};
       const rawEmail = tags['contact:email'] || tags.email || null;
       const email = rawEmail && validEmail(rawEmail.trim()) ? rawEmail.trim().toLowerCase() : null;
+      const actualCity=String(tags['addr:city'] || city || 'Ville non renseignée').trim().slice(0,100);
       const result = await query(`insert into leads (osm_type,osm_id,country,city,category,name,address,phone,email,status)
         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) on conflict do nothing returning id`,
-        [el.type, String(el.id), country.trim(), city.trim(), category, String(tags.name).trim(), addressFromTags(tags), tags['contact:phone'] || tags.phone || null, email, email ? 'nouveau' : 'contact manuel']);
+        [el.type, String(el.id), country.trim(), actualCity, category, String(tags.name).trim(), addressFromTags(tags), tags['contact:phone'] || tags.phone || null, email, email ? 'nouveau' : 'contact manuel']);
       if (result.rowCount) { created++; if (!email) manual++; await query('insert into events (lead_id,event_type,source,payload) values ($1,$2,$3,$4)', [result.rows[0].id,'lead_found','overpass',JSON.stringify({has_email:Boolean(email),category,city,country})]); }
       else skipped++;
     }
-    return { found: created, manual, duplicates: skipped };
+    return { found: created, manual, duplicates: skipped, scanned:elements.length, scope:city?'city':'country', limited:elements.length>=1500 };
   } catch (error) {
     error.stage ||= stage;
     throw error;
@@ -307,8 +317,9 @@ app.get('/stats',admin,async (_req,res) => {
 
 app.post('/admin/hunt',admin,async (req,res) => {
   const {country,city,category}=req.body||{};
-  if (!validText(country,100)||!validText(city,100)||!Object.hasOwn(CATEGORIES,category)) return res.status(400).json({error:'country, city, category requis; catégories: salon, clinique, restaurant, artisan'});
-  try { res.json(await hunt({country,city,category})); }
+  const cityValue=typeof city==='string'?city.trim():'';
+  if (!validText(country,100)||(cityValue && !validText(cityValue,100))||!Object.hasOwn(CATEGORIES,category)) return res.status(400).json({error:'country et category requis; city est facultative'});
+  try { res.json(await hunt({country:country.trim(),city:cityValue,category})); }
   catch (err) {
     const detail=String(err.message||'Erreur inconnue').slice(0,180);
     console.error('hunt_failed',err.stage||'unknown',err.code||'',detail);
