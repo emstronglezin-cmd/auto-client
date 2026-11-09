@@ -32,6 +32,7 @@ export const config = {
   maxDelaySeconds: Math.max(1, Number(process.env.MAX_DELAY_SECONDS || 2400)),
   unsubscribeSecret: process.env.UNSUBSCRIBE_SECRET || '',
   overpassUrl: process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter',
+  overpassFallbackUrl: process.env.OVERPASS_FALLBACK_URL || 'https://overpass.kumi.systems/api/interpreter',
   nominatimUrl: process.env.NOMINATIM_URL || 'https://nominatim.openstreetmap.org/search',
 };
 

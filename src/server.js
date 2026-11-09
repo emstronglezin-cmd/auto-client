@@ -69,20 +69,46 @@ function overpassQuery(location, category) {
   const items = CATEGORIES[category].clauses.map(([key,value]) =>
     `node["${key}"${value === '*' ? '' : `="${value}"` }]["name"][!"website"]${area};way["${key}"${value === '*' ? '' : `="${value}"` }]["name"][!"website"]${area};relation["${key}"${value === '*' ? '' : `="${value}"` }]["name"][!"website"]${area};`
   ).join('\n');
-  return `[out:json][timeout:60][maxsize:268435456];(${items});out center tags 1500;`;
+  return `[out:json][timeout:100][maxsize:268435456];(${items});out center tags 1500;`;
 }
 function addressFromTags(t = {}) {
   const street = [t['addr:street'], t['addr:housenumber']].filter(Boolean).join(' ');
   return [street, t['addr:suburb'], t['addr:city'], t['addr:postcode']].filter(Boolean).join(', ') || null;
 }
+
+async function fetchOverpass(location, category) {
+  const data=overpassQuery(location,category);
+  const endpoints=[...new Set([config.overpassUrl,config.overpassFallbackUrl].filter(Boolean))];
+  let lastError;
+  for(let i=0;i<endpoints.length;i++){
+    try{
+      const response=await fetch(endpoints[i],{
+        method:'POST',
+        headers:{'Content-Type':'application/x-www-form-urlencoded','User-Agent':'AutoClientLeadFinder/1.0'},
+        body:new URLSearchParams({data}),
+        signal:AbortSignal.timeout(i===0?80_000:35_000),
+      });
+      if(response.ok) return await response.json();
+      lastError=new Error(`HTTP ${response.status}`);
+      if(![502,503,504].includes(response.status)||i===endpoints.length-1) throw lastError;
+    }catch(error){
+      lastError=error;
+      const status=Number(error.message?.match(/HTTP (\d+)/)?.[1]||0);
+      if((status&&!([502,503,504].includes(status)))||i===endpoints.length-1){
+        const code=error.cause?.code;
+        throw new Error(code?`fetch failed (${code})`:String(error.message||'fetch failed'));
+      }
+    }
+  }
+  throw new Error(String(lastError?.message||'Overpass unavailable'));
+}
+
 async function hunt({ country, city, category }) {
   let stage='Nominatim';
   try {
     const location = await locateSearchArea(city, country);
     stage='Overpass';
-    const response = await fetch(config.overpassUrl, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: new URLSearchParams({ data: overpassQuery(location,category) }) });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
+    const data = await fetchOverpass(location,category);
     stage='Supabase';
     let created = 0, manual = 0, skipped = 0;
     const elements=data.elements || [];
