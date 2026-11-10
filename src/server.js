@@ -5,6 +5,9 @@ import { pool, query, transaction } from './db.js';
 import { CATEGORIES, brevoSend, demoHtml, generateDemoCopy, generateEmail, makeUnsubscribeToken, publishDemo, verifyUnsubscribeToken } from './services.js';
 import { publishJob, verifyQstash } from './qstash.js';
 
+const COUNTRY_ISO2 = {
+  'United States':'US','United Kingdom':'GB','Canada':'CA','Ireland':'IE','France':'FR','Germany':'DE','Netherlands':'NL','Belgium':'BE','Luxembourg':'LU','Switzerland':'CH','Austria':'AT','Spain':'ES','Portugal':'PT','Italy':'IT','Sweden':'SE','Norway':'NO','Denmark':'DK','Finland':'FI','Poland':'PL','Czechia':'CZ','Greece':'GR','Romania':'RO','Australia':'AU','New Zealand':'NZ','South Africa':'ZA','United Arab Emirates':'AE','Burkina Faso':'BF','Ghana':'GH'
+};
 const startupMissing = validateConfig();
 const app = express();
 app.disable('x-powered-by');
@@ -46,30 +49,33 @@ function webhookKey(req) {
 }
 
 async function locateSearchArea(city, country) {
+  if (!city) {
+    const isoCode=COUNTRY_ISO2[country];
+    if (!isoCode) throw new Error('Pays non pris en charge par le menu.');
+    // Country-wide searches use OSM's ISO3166-1 boundary directly, avoiding
+    // Nominatim's strict public rate limit for dropdown-based searches.
+    return { isoCode, bbox:null };
+  }
   const url = new URL(config.nominatimUrl);
-  if (city) url.searchParams.set('city', city);
+  url.searchParams.set('city', city);
   url.searchParams.set('country', country);
   url.searchParams.set('format','jsonv2');
   url.searchParams.set('limit','1');
-  if (!city) url.searchParams.set('featuretype','country');
-  const response = await fetch(url, { headers: { 'User-Agent': 'WebStudioLeadFinder/1.0 (contact configured by operator)' } });
+  const response = await fetch(url, { headers: { 'User-Agent': 'WebStudioLeadFinder/1.0 (contact configured by operator)' }, signal:AbortSignal.timeout(15000) });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const results = await response.json();
   const place = results[0];
-  if (!place?.boundingbox) throw new Error(city ? 'Ville introuvable pour ce pays.' : 'Pays introuvable dans Nominatim.');
-  if (!city && place.osm_type === 'relation' && /^\d+$/.test(String(place.osm_id))) {
-    return { areaId: String(BigInt(place.osm_id) + 3600000000n), bbox: place.boundingbox.map(Number) };
-  }
-  return { areaId: null, bbox: place.boundingbox.map(Number) };
+  if (!place?.boundingbox) throw new Error('Ville introuvable pour ce pays.');
+  return { areaId:null, isoCode:null, bbox:place.boundingbox.map(Number) };
 }
 function overpassQuery(location, category) {
-  const [south,north,west,east] = location.bbox;
-  const box = `${south},${west},${north},${east}`;
-  const area = location.areaId ? `(area:${location.areaId})` : `(${box})`;
+  const box=location.bbox ? `${location.bbox[0]},${location.bbox[2]},${location.bbox[1]},${location.bbox[3]}` : '';
+  const area=location.isoCode ? '(area.searchArea)' : `(${box})`;
+  const countryArea=location.isoCode ? `area["ISO3166-1"="${location.isoCode}"]->.searchArea;` : '';
   const items = CATEGORIES[category].clauses.map(([key,value]) =>
     `node["${key}"${value === '*' ? '' : `="${value}"` }]["name"][!"website"]${area};way["${key}"${value === '*' ? '' : `="${value}"` }]["name"][!"website"]${area};relation["${key}"${value === '*' ? '' : `="${value}"` }]["name"][!"website"]${area};`
   ).join('\n');
-  return `[out:json][timeout:100][maxsize:268435456];(${items});out center tags 1500;`;
+  return `[out:json][timeout:100][maxsize:268435456];${countryArea}(${items});out center tags 1500;`;
 }
 function addressFromTags(t = {}) {
   const street = [t['addr:street'], t['addr:housenumber']].filter(Boolean).join(' ');
@@ -104,7 +110,7 @@ async function fetchOverpass(location, category) {
 }
 
 async function hunt({ country, city, category }) {
-  let stage='Nominatim';
+  let stage=city?'Nominatim':'Overpass';
   try {
     const location = await locateSearchArea(city, country);
     stage='Overpass';
